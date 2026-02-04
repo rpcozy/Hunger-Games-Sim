@@ -5,6 +5,32 @@ import { EventTemplate, EventCategory } from '../types';
  * Each event template uses placeholders that will be replaced dynamically
  */
 
+/**
+ * Fatal Event Configuration
+ * Controls the probability that a fatal event will be selected during each game phase
+ * Adjust these percentages to balance game length and pacing
+ * 
+ * Range: 0-100 (representing percentage chance)
+ * Higher values = more deaths per phase = shorter games
+ * Lower values = fewer deaths per phase = longer games
+ */
+export const FATAL_EVENT_CHANCES: Record<string, number> = {
+  bloodbath: 45,   // Opening phase: exciting but not guaranteed slaughter (52 fatal / 80 total = 65%, reduced for balance)
+  day: 40,         // Mid-day: balanced action (74 fatal / 121 total = 61%, reduced slightly)
+  night: 35,       // Night: less predictable, more survival scenarios
+  feast: 55,       // High stakes confrontation: deadly (57 fatal / 68 total = 84%, reduced for balance)
+  'arena-event': 45, // Game maker intervention: impactful but not guaranteed (mixed across scenarios)
+};
+
+/**
+ * Helper function to check if an event should be fatal
+ * Uses the configured percentage to determine if a fatal event should trigger
+ */
+export const shouldSelectFatalEvent = (phase: string): boolean => {
+  const fatalChance = FATAL_EVENT_CHANCES[phase] ?? 50;
+  return Math.random() * 100 < fatalChance;
+};
+
 // Weapons and items for random substitution
 export const MELEE_WEAPONS = [
   'knife', 'sword', 'spear', 'axe', 'machete', 

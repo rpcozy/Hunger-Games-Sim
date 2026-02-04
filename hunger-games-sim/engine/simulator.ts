@@ -6,7 +6,7 @@ import {
   GamePhase, 
   SimulationStepResult 
 } from '../types';
-import { EVENT_POOL } from '../data/events';
+import { EVENT_POOL, shouldSelectFatalEvent } from '../data/events';
 import { replaceTextPlaceholders } from '../utils/textReplacer';
 
 /**
@@ -27,10 +27,36 @@ const shuffleArray = <T>(array: T[]): T[] => {
 };
 
 /**
- * Get random event from a pool
+ * Separate events into fatal and non-fatal
+ * Fatal events: have at least one death in the deaths array
  */
-const getRandomEvent = (eventPool: EventTemplate[]): EventTemplate => {
-  return eventPool[Math.floor(Math.random() * eventPool.length)];
+const separateFatalAndNonFatal = (events: EventTemplate[]): [EventTemplate[], EventTemplate[]] => {
+  const fatal = events.filter(e => e.deaths.length > 0);
+  const nonFatal = events.filter(e => e.deaths.length === 0);
+  return [fatal, nonFatal];
+};
+
+/**
+ * Get random event from a pool, optionally weighted toward fatal or non-fatal
+ */
+const getRandomEvent = (eventPool: EventTemplate[], phase?: string): EventTemplate => {
+  // If no phase specified, just return random event
+  if (!phase) {
+    return eventPool[Math.floor(Math.random() * eventPool.length)];
+  }
+
+  // Separate fatal and non-fatal events
+  const [fatalEvents, nonFatalEvents] = separateFatalAndNonFatal(eventPool);
+
+  // If we don't have both types, return from what we have
+  if (fatalEvents.length === 0) return eventPool[Math.floor(Math.random() * eventPool.length)];
+  if (nonFatalEvents.length === 0) return eventPool[Math.floor(Math.random() * eventPool.length)];
+
+  // Determine if we should select a fatal event based on configuration
+  const selectFatal = shouldSelectFatalEvent(phase);
+  const selectedPool = selectFatal ? fatalEvents : nonFatalEvents;
+
+  return selectedPool[Math.floor(Math.random() * selectedPool.length)];
 };
 
 /**
@@ -128,12 +154,12 @@ export const simulatePhase = (
   
   // For arena events, select ONE event template to use for all tributes
   const useSharedEvent = currentPhase === 'arena-event';
-  const sharedEventTemplate = useSharedEvent ? getRandomEvent(eventPool) : null;
+  const sharedEventTemplate = useSharedEvent ? getRandomEvent(eventPool, currentPhase) : null;
   
   // Process events until all tributes have been assigned
   while (shuffledTributes.length > 0) {
     // Get random event (or use shared event for arena)
-    const eventTemplate = sharedEventTemplate || getRandomEvent(eventPool);
+    const eventTemplate = sharedEventTemplate || getRandomEvent(eventPool, currentPhase);
     
     // Check if we have enough tributes
     if (!canExecuteEvent(eventTemplate, shuffledTributes)) {
